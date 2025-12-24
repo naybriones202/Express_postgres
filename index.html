@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Sistema Admin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-light">
+
+<div class="container mt-4">
+
+  <!-- LOGIN -->
+  <div id="vistaLogin" class="text-center">
+    <h3 class="mb-3">Login</h3>
+
+    <div class="mx-auto" style="max-width: 300px;">
+      <input id="loginCedula" class="form-control mb-2" placeholder="Cédula">
+      <input id="loginClave" type="password" class="form-control mb-2" placeholder="Clave">
+      <button class="btn btn-primary w-100" onclick="login()">Ingresar</button>
+      <p id="loginMsg" class="text-danger mt-2"></p>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="vistaDashboard" class="d-none">
+
+    <!-- USUARIOS -->
+    <h4 class="mt-4">Crear Usuario</h4>
+
+    <input id="cedula" class="form-control mb-1" placeholder="Cédula">
+    <input id="nombre" class="form-control mb-1" placeholder="Nombre">
+    <input id="clave" class="form-control mb-2" placeholder="Clave">
+
+    <button class="btn btn-success mb-3" onclick="crearUsuario()">Crear Usuario</button>
+
+    <table class="table">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Cédula</th>
+          <th>Nombre</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tablaUsuarios"></tbody>
+    </table>
+
+    <hr>
+
+    <!-- MATERIAS -->
+    <h4>Materias</h4>
+
+    <input id="nombreMateria" class="form-control mb-2" placeholder="Nueva materia">
+    <button class="btn btn-success mb-3" onclick="crearMateria()">Registrar Materia</button>
+
+    <div class="input-group mb-3">
+      <input id="buscarMateriaInput" class="form-control" placeholder="Buscar materia">
+      <button class="btn btn-primary" onclick="buscarMateria()">Buscar</button>
+    </div>
+
+    <table class="table">
+      <thead class="table-dark">
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Clave</th>
+        </tr>
+      </thead>
+      <tbody id="tablaMaterias">
+        <tr>
+          <td colspan="3" class="text-center">
+            Escriba una materia para buscar
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:3000";
+
+/* LOGIN */
+async function login() {
+  const res = await fetch(API + "/login", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      cedula: loginCedula.value,
+      clave: loginClave.value
+    })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    loginMsg.textContent = data.msg;
+    return;
+  }
+
+  vistaLogin.classList.add("d-none");
+  vistaDashboard.classList.remove("d-none");
+  cargarUsuarios();
+  cargarMaterias();
+}
+
+/* USUARIOS */
+async function cargarUsuarios() {
+  const res = await fetch(API + "/usuarios");
+  const data = await res.json();
+
+  tablaUsuarios.innerHTML = "";
+  data.forEach(u => {
+    tablaUsuarios.innerHTML += `
+      <tr>
+        <td>${u.id}</td>
+        <td>${u.cedula}</td>
+        <td>${u.nombre}</td>
+        <td>
+          <button class="btn btn-danger btn-sm" onclick="eliminarUsuario(${u.id})">X</button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+async function crearUsuario() {
+  await fetch(API + "/usuarios", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({
+      cedula: cedula.value,
+      nombre: nombre.value,
+      clave: clave.value
+    })
+  });
+
+  cedula.value = "";
+  nombre.value = "";
+  clave.value = "";
+
+  cargarUsuarios();
+}
+
+async function eliminarUsuario(id) {
+  await fetch(API + "/usuarios/" + id, { method: "DELETE" });
+  cargarUsuarios();
+}
+
+/* MATERIAS */
+async function crearMateria() {
+  await fetch(API + "/materias", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ nombre: nombreMateria.value })
+  });
+
+  nombreMateria.value = "";
+  cargarMaterias();
+}
+
+async function cargarMaterias() {
+  const res = await fetch(API + "/materias");
+  const data = await res.json();
+  mostrarMaterias(data);
+}
+
+async function buscarMateria() {
+  const texto = buscarMateriaInput.value.trim();
+  const tabla = tablaMaterias;
+
+  tabla.innerHTML = "";
+
+  if (texto === "") {
+    tabla.innerHTML = `
+      <tr>
+        <td colspan="3" class="text-center">
+          Escriba una materia para buscar
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  const res = await fetch(API + "/materias?buscar=" + texto);
+  const data = await res.json();
+  mostrarMaterias(data);
+}
+
+function mostrarMaterias(materias) {
+  tablaMaterias.innerHTML = "";
+
+  if (materias.length === 0) {
+    tablaMaterias.innerHTML = `
+      <tr>
+        <td colspan="3" class="text-center text-danger">
+          No se encontraron materias
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  materias.forEach(m => {
+    tablaMaterias.innerHTML += `
+      <tr>
+        <td>${m.codigo ?? m.id}</td>
+        <td>${m.nombre}</td>
+        <td>${m.clave ?? "-"}</td>
+      </tr>
+    `;
+  });
+}
+</script>
+
+</body>
+</html>
