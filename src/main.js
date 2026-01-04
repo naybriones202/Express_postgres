@@ -171,27 +171,68 @@ document.getElementById("btnConfig").addEventListener("click", () => {
   alert("Configuración: Se ha cambiado el tema visual.");
 });
 
-// =====================
-// busqueda de materia
-const inputBuscarMateria = document.getElementById("inputBuscarMateria");
-const btnBuscarMateria = document.getElementById("btnBuscarMateria");
-const tablaMaterias = document.getElementById("tablaMaterias");
+// ====== MATERIAS ======
+
+// Crear materia
+async function crearMateria() {
+  const nombre = nombreMateria.value.trim();
+
+  if (nombre === "") {
+    alert("Ingrese el nombre de la materia");
+    return;
+  }
+
+  const res = await fetch(API + "/materia", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre })
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    alert(data.msg || "Error al registrar materia");
+    return;
+  }
+
+  nombreMateria.value = "";
+  cargarMaterias();
+}
 
 // Cargar todas las materias
 async function cargarMaterias() {
-  const res = await fetch("http://localhost:3000/materias");
+  const res = await fetch(API + "/materia");
   const data = await res.json();
   mostrarMaterias(data);
 }
 
-// Mostrar materias
+// Buscar materias
+async function buscarMateria() {
+  const texto = buscarMateriaInput.value.trim();
+
+  if (texto === "") {
+    cargarMaterias();
+    return;
+  }
+
+  const res = await fetch(
+    API + "/materia?buscar=" + encodeURIComponent(texto)
+  );
+
+  const data = await res.json();
+  mostrarMaterias(data);
+}
+
+// Mostrar materias en la tabla
 function mostrarMaterias(materias) {
   tablaMaterias.innerHTML = "";
 
-  if (materias.length === 0) {
+  if (!materias || materias.length === 0) {
     tablaMaterias.innerHTML = `
       <tr>
-        <td colspan="2">No se encontraron materias</td>
+        <td colspan="2" class="text-center text-danger">
+          No se encontraron materias
+        </td>
       </tr>
     `;
     return;
@@ -207,19 +248,5 @@ function mostrarMaterias(materias) {
   });
 }
 
-// Buscar con botón
-btnBuscarMateria.addEventListener("click", async () => {
-  const texto = inputBuscarMateria.value.trim();
-
-  if (texto === "") {
-    cargarMaterias();
-    return;
-  }
-
-  const res = await fetch(`http://localhost:3000/materias/buscar/${texto}`);
-  const data = await res.json();
-  mostrarMaterias(data);
-});
-
-// Inicial
+// Carga inicial
 cargarMaterias();
