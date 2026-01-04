@@ -62,14 +62,13 @@
     <table class="table">
       <thead class="table-dark">
         <tr>
-          <th>ID</th>
+          <th>Código</th>
           <th>Nombre</th>
-          <th>Clave</th>
         </tr>
       </thead>
       <tbody id="tablaMaterias">
         <tr>
-          <td colspan="3" class="text-center">
+          <td colspan="2" class="text-center">
             Escriba una materia para buscar
           </td>
         </tr>
@@ -151,7 +150,7 @@ async function eliminarUsuario(id) {
 
 /* MATERIAS */
 async function crearMateria() {
-  await fetch(API + "/materias", {
+  await fetch(API + "/materia", {
     method: "POST",
     headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ nombre: nombreMateria.value })
@@ -162,29 +161,22 @@ async function crearMateria() {
 }
 
 async function cargarMaterias() {
-  const res = await fetch(API + "/materias");
+  const res = await fetch(API + "/materia");
   const data = await res.json();
   mostrarMaterias(data);
 }
 
 async function buscarMateria() {
   const texto = buscarMateriaInput.value.trim();
-  const tabla = tablaMaterias;
-
-  tabla.innerHTML = "";
 
   if (texto === "") {
-    tabla.innerHTML = `
-      <tr>
-        <td colspan="3" class="text-center">
-          Escriba una materia para buscar
-        </td>
-      </tr>
-    `;
+    cargarMaterias();
     return;
   }
 
-  const res = await fetch(API + "/materias?buscar=" + texto);
+  const res = await fetch(
+    API + "/materia?buscar=" + encodeURIComponent(texto)
+  );
   const data = await res.json();
   mostrarMaterias(data);
 }
@@ -195,7 +187,7 @@ function mostrarMaterias(materias) {
   if (materias.length === 0) {
     tablaMaterias.innerHTML = `
       <tr>
-        <td colspan="3" class="text-center text-danger">
+        <td colspan="2" class="text-center text-danger">
           No se encontraron materias
         </td>
       </tr>
@@ -206,9 +198,8 @@ function mostrarMaterias(materias) {
   materias.forEach(m => {
     tablaMaterias.innerHTML += `
       <tr>
-        <td>${m.codigo ?? m.id}</td>
+        <td>${m.codigo}</td>
         <td>${m.nombre}</td>
-        <td>${m.clave ?? "-"}</td>
       </tr>
     `;
   });
