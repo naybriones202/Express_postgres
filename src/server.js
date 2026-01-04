@@ -7,28 +7,32 @@ import bcrypt from "bcrypt";
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-
-
 app.post("/login", async (req, res) => {
   try {
     const { cedula, clave } = req.body;
-    
-    // Buscamos usuario por cédula y clave
-    // NOTA: En producción, las claves deben estar encriptadas (hash).
-    const query = "SELECT * FROM usuarios WHERE cedula = $1 AND clave = $2";
-    const result = await pool.query(query, [cedula, clave]);
+
+    // 1. Buscar usuario por su cédula
+    const query = "SELECT * FROM usuarios WHERE cedula = $1";
+    const result = await pool.query(query, [cedula]);
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ msg: "Cédula o contraseña incorrecta" });
+      return res.status(401).json({ msg: "Usuario no encontrado" });
     }
 
-    // Devolvemos el usuario (sin la clave por seguridad)
     const usuario = result.rows[0];
-    delete usuario.clave; 
-    
-    res.json({ msg: "Bienvenido", usuario });
 
+    // 2. Comparar contraseña ingresada con la encriptada
+    const valido = await bcrypt.compare(clave, usuario.clave);
+
+    if (!valido) {
+      return res.status(401).json({ msg: "Contraseña incorrecta" });
+    }
+
+    // 3. Respuesta correcta
+    delete usuario.clave; // Opcional, por seguridad
+
+    res.json({ msg: "Ingreso exitoso", usuario });
+    
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -132,8 +136,12 @@ app.post("/materia", async (req, res) => {
   try {
     const { nombre } = req.body;
 
+    if (!nombre) {
+      return res.status(400).json({ msg: "Nombre obligatorio" });
+    }
+
     const existe = await pool.query(
-      "SELECT * FROM materia WHERE LOWER(nombre) = LOWER($1)",
+      "SELECT 1 FROM materia WHERE LOWER(nombre) = LOWER($1)",
       [nombre]
     );
 
@@ -142,7 +150,7 @@ app.post("/materia", async (req, res) => {
     }
 
     const result = await pool.query(
-      "INSERT INTO materia (nombre) VALUES ($1) RETURNING *",
+      "INSERT INTO materia (nombre) VALUES ($1) RETURNING codigo, nombre",
       [nombre]
     );
 
@@ -152,44 +160,30 @@ app.post("/materia", async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // =====================
-// CONSULTAR MATERIAS
+// BUSCAR MATERIA
 // =====================
-app.get("/materia/buscar/:texto", async (req, res) => {
-  try {
-    const { texto } = req.params;
-
-    const result = await pool.query(
-      "SELECT * FROM materia WHERE nombre ILIKE $1 ORDER BY codigo",
-      [`%${texto}%`]
-    );
-
-    res.json(result.rows);
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.listen(3000, () => {
-  console.log("Servidor corriendo en http://localhost:3000");
-});
 app.get("/materia", async (req, res) => {
-  const { buscar } = req.query;
-
   try {
+    const { buscar } = req.query;
+
     const result = buscar
       ? await pool.query(
-          "SELECT codigo, nombre FROM materias WHERE nombre ILIKE $1",
+          "SELECT codigo, nombre FROM materia WHERE nombre ILIKE $1 ORDER BY codigo",
           [`%${buscar}%`]
         )
       : await pool.query(
-          "SELECT codigo, nombre FROM materias"
+          "SELECT codigo, nombre FROM materia ORDER BY codigo"
         );
 
     res.json(result.rows);
+
   } catch (error) {
     res.status(500).json({ error: "Error al obtener materias" });
   }
+});
+
+
+app.listen(3000, () => {
+  console.log("Servidor corriendo en http://localhost:3000");
 });
